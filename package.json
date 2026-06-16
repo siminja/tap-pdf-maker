@@ -1,0 +1,8 @@
+{
+  "name": "tap-pdf-maker",
+  "version": "1.0.0",
+  "dependencies": {
+    "@sparticuz/chromium-min": "^131.0.0",
+    "puppeteer-core": "^23.0.0"
+  }
+}
