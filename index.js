@@ -2,7 +2,7 @@ const express = require('express');
 const puppeteer = require('puppeteer-core');
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
 
 app.options('/api/pdf', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,6 +15,23 @@ app.post('/api/pdf', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const { html, filename } = req.body;
   if (!html) return res.status(400).json({ ok: false, error: 'html 필요' });
+
+  // 폰트를 시스템 폰트로 교체 + 배경색 강제 적용
+  const processedHtml = html
+    .replace(/<link[^>]*fonts\.googleapis\.com[^>]*>/gi, '')
+    .replace(/<link[^>]*fonts\.gstatic\.com[^>]*>/gi, '')
+    .replace(
+      /font-family\s*:\s*['"]?Noto Sans KR['"]?[^;]*/gi,
+      "font-family: 'NanumGothic', 'Nanum Gothic', sans-serif"
+    )
+    .replace(
+      /font-family\s*:\s*['"]?Pretendard['"]?[^;]*/gi,
+      "font-family: 'NanumGothic', 'Nanum Gothic', sans-serif"
+    )
+    + `<style>
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { font-family: 'NanumGothic', 'Nanum Gothic', sans-serif !important; }
+    </style>`;
 
   let browser = null;
   try {
@@ -30,11 +47,13 @@ app.post('/api/pdf', async (req, res) => {
         '--disable-gpu',
         '--no-zygote',
         '--single-process',
+        '--font-render-hinting=none',
       ],
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.setContent(processedHtml, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(1000);
 
     const pdf = await page.pdf({
       format: 'A4',
