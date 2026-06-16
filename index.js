@@ -1,5 +1,4 @@
 const express = require('express');
-const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
 
 const app = express();
@@ -19,10 +18,19 @@ app.post('/api/pdf', async (req, res) => {
 
   let browser = null;
   try {
+    const executablePath = process.env.CHROMIUM_PATH || '/usr/bin/chromium';
+
     browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      executablePath,
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process',
+      ],
     });
 
     const page = await browser.newPage();
