@@ -1,8 +1,6 @@
 const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 
-const CHROMIUM_REMOTE_URL = 'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar';
-
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,17 +13,27 @@ module.exports = async function handler(req, res) {
 
   let browser = null;
   try {
-    const executablePath = await chromium.executablePath(CHROMIUM_REMOTE_URL);
+    const executablePath = await chromium.executablePath(
+      'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
+    );
 
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        '--disable-gpu',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--no-zygote',
+        '--single-process',
+      ],
       executablePath,
-      headless: chromium.headless,
-      defaultViewport: chromium.defaultViewport,
+      headless: 'new',
+      defaultViewport: { width: 1280, height: 900 },
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 25000 });
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -40,7 +48,7 @@ module.exports = async function handler(req, res) {
     );
     return res.status(200).send(Buffer.from(pdf));
   } catch (err) {
-    console.error('PDF 생성 오류:', err);
+    console.error('PDF 생성 오류:', err.message);
     return res.status(500).json({ ok: false, error: err.message });
   } finally {
     if (browser) await browser.close().catch(() => {});
